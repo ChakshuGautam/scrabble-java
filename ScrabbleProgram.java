@@ -22,9 +22,9 @@ package scrabbl_ai;
 
 import java.io.*;
 import java.util.Scanner; 
-import java.util.regex.*;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Collections;
 
 /**
  *
@@ -33,6 +33,7 @@ import java.util.HashMap;
 public final class ScrabbleProgram {
 
     public enum SquareType {
+        
         TRIPLE_WORD, 
         DOUBLE_WORD, 
         TRIPLE_LETTER, 
@@ -42,7 +43,7 @@ public final class ScrabbleProgram {
     }
     
     public class Square {
-    
+        
         SquareType type;
         ArrayList<Boolean> downCrossCheck;
         char letter; // Special values: '.' = empty square and
@@ -79,7 +80,7 @@ public final class ScrabbleProgram {
         }
     }
 
-    // Define classes to have typedef equivalent in C++
+    // Define classes shorten the name 
     public class SquareRow extends ArrayList <Square> {}
     public class SquareGrid extends ArrayList <SquareRow> {}
     public class Lexicon extends HashMap <String, Integer> {}
@@ -98,9 +99,7 @@ public final class ScrabbleProgram {
     
     // Constructor function for the main class
     public ScrabbleProgram () {
-        
-        // Get the data for the tiles and words to be stored in global variables
-
+    
         tilesFileName = "tiles.txt";
         wordsFileName = "common_1000_words.txt";
         boardFileName = "board.txt";
@@ -109,15 +108,15 @@ public final class ScrabbleProgram {
         numBoardCols = 15;
         numRackTiles = 7;
         
+        // Get the data for the tiles and words to be stored in global variables
         words = readWordData();
         trieRoot = createWordTrie();
         tiles = readTileData();
     }
    
-
     /**
-     * @return  an unordered map of strings containing all the words in the 
-     *          scrabble dictionary. The key is type string since it is stores 
+     * @return  an unordered map of Strings containing all the words in the 
+     *          scrabble dictionary. The key is type String since it is stores 
      *          the word. The mapped value is type integer since it stores if 
      *          the word is worth a bonus multiplier.
      */
@@ -126,21 +125,20 @@ public final class ScrabbleProgram {
         words = new Lexicon ();
        
         // Open file containing the word data
-        Scanner word_data_file = null;
-        System.out.print(wordsFileName);
+        Scanner wordDataFile = null;
 
         // Try opening the file
         try {
-            word_data_file = new Scanner(new File(wordsFileName));
+            wordDataFile = new Scanner(new File(wordsFileName));
         } catch (FileNotFoundException ex) {
             System.out.println("Could not open " + wordsFileName);
         }
         
         // If file is opened
-        if (word_data_file != null) {  
-            while(word_data_file.hasNextLine()) {
+        if (wordDataFile != null) {  
+            while(wordDataFile.hasNextLine()) {
                 // IMPORTANT: The words must all be in uppercase.
-                String word = word_data_file.nextLine();
+                String word = wordDataFile.nextLine();
 
                 // Insert the word into the unordered map
                 words.put(word, 1);
@@ -158,6 +156,7 @@ public final class ScrabbleProgram {
         root.letter = '*';
         root.isTerminalNode = false;
 
+        // Add every word in the words HashMap
         for (String word : words.keySet()) {
             
             if (word.length() > 2 && word.matches("[A-Z]+")) {
@@ -172,7 +171,7 @@ public final class ScrabbleProgram {
      * Inserts TrieNodes into the trie to store the word in the data structure.
      *
      * @param   root    a TrieNode that is the root of the trie
-     * @param   word   the string of letters to be inserted
+     * @param   word   the String of letters to be inserted
      */
     public void insertIntoTrie (TrieNode root, String word) {
         
@@ -197,7 +196,7 @@ public final class ScrabbleProgram {
                 // Update the current node by adding new_node as a child
                 curr_node.children.add(new_node);
 
-                // Also, update the letter_indexes property by storing
+                // Also, update the letterIndexes property by storing
                 // the index of the child where the letter word[i] can be found
                 // It is the index of the last child in the children property
                 // since the node was just added
@@ -240,14 +239,14 @@ public final class ScrabbleProgram {
     }
 
     /**
-     * @return  a vector of Tiles with each tile object containing the right data.
+     * @return  an ArrayList of Tiles with each tile object containing the 
+     *          right data.
      */
-    ArrayList <Tile> readTileData () {
+    public ArrayList <Tile> readTileData () {
         
-        // Declare vector to store all the Tiles
+        // Declare ArrayList to store all the Tiles
         tiles = new ArrayList <Tile> ();
    
-        // Open file containing the tile data
         Scanner tileDataFile = null;
         
         // Try opening the file
@@ -274,223 +273,203 @@ public final class ScrabbleProgram {
         return tiles;
     }
     
-///**
-// * @return  a SquareGrid containing the data for each square on the board.
-// *          Key for the text file's characters:
-// *              W = Triple Word Score
-// *              w = Double Word Score
-// *              L = Triple Letter Score
-// *              l = Double Letter Score
-// *              . = Regular Square
-// *              * = Square is out of bounds
-// */
-//SquareGrid read_board_data ()
-//{
-//    // Declare board vector
-//    SquareGrid board;
-//
-//    // Open file containing the board data
-//    ifstream in_file;
-//    string file_name = BOARD_FILE_NAME;
-//    in_file.open(file_name.c_str(), ifstream::in);
-//
-//    // Ensure file is open
-//    if (!in_file.is_open())
-//    {
-//        cout << "Could not open " << file_name << endl;
-//        return board;
-//    }
-//
-//    // Declare vectors and variables that will become properties of the board
-//    vector <bool> all_invalid (26, false);
-//    vector <bool> all_valid (26, true);
-//    int row_num = 0;
-//
-//    // Get all the rows in the board
-//    // The rows of x's around the actual board are to ensure that
-//    // tiles are not added outside the board
-//    while (in_file.good())
-//    {
-//        // Read a line from the text file
-//        string line;
-//        in_file >> line;
-//
-//        // Declare a row of Squares to store the data for each row
-//        SquareRow row;
-//
-//        // Go through all the characters in each line
-//        for (unsigned int i = 0; i < line.size(); i++)
-//        {
-//            Square sqr;
-//            sqr.letter = '.';
-//            sqr.row = row_num;
-//            sqr.col = i;
-//
-//            // Assign the Square type to sqr
-//            switch (line[i])
-//            {
-//                case 'W': sqr.type = triple_word;   break;
-//                case 'w': sqr.type = double_word;   break;
-//                case 'L': sqr.type = triple_letter; break;
-//                case 'l': sqr.type = double_letter; break;
-//                case '.': sqr.type = regular;       break;
-//                case 'x': sqr.type = outside;       break;
-//            }
-//
-//            // Assign the cross_check_letters vector to sqr
-//            switch (line[i])
-//            {
-//                case 'x':
-//                    sqr.down_cross_check = all_invalid;
-//                    sqr.letter = '.';
-//                    break;
-//                default:
-//                    sqr.down_cross_check = all_valid;
-//                    break;
-//            }
-//
-//            row.push_back(sqr);
-//        }
-//
-//        board.push_back(row);
-//        row_num++;
-//    }
-//
-//    return board;
-//}
-//
-///**
-// * @param   stream  an output stream object to output to console
-// * @param   type    an object of class SquareType
-// * @return          an output stream object that is outputted
-// */
-//ostream &operator << (ostream &stream, SquareType type)
-//{
-//    switch (type)
-//    {
-//        case triple_word:   stream << "triple_word";   break;
-//        case double_word:   stream << "double_word";   break;
-//        case triple_letter: stream << "triple_letter"; break;
-//        case double_letter: stream << "double_letter"; break;
-//        case regular:       stream << "regular";       break;
-//        case outside:       stream << "outside";       break;
-//    }
-//
-//    return stream;
-//}
-//
-///**
-// * Fills the board with letters which are read from a text file.
-// *
-// * @param   board   a square grid containing the data for the state of the game
-// *                  This parameter is passed by reference since the board is
-// *                  being modified.
-// */
-//void read_test_game_data (SquareGrid &board)
-//{
-//    // Open file containing the data
-//    ifstream in_file;
-//    string file_name = TESTGAME_FILE_NAME;
-//    in_file.open(file_name.c_str(), ifstream::in);
-//
-//    // Ensure file is open
-//    if (!in_file.is_open())
-//    {
-//        cout << "Could not open " << file_name << endl;
-//    }
-//
-//    // Go through all the rows
-//    for (int row = 0; row < NUM_BOARD_ROWS; row++)
-//    {
-//        // Get each row as input
-//        string input;
-//        in_file >> input;
-//
-//        // Go through all the rows
-//        for (int col = 0; col < NUM_BOARD_COLS; col++)
-//        {
-//            // row+1 and row+1 are used since the top row and column
-//            // (row 0 and column 0) of board are used to mark outside squares
-//            // Fill in the tiles on the board
-//            board[row+1][col+1].letter = input[col];
-//        }
-//    }
-//}
-//
-///**
-// * Updates the down_cross_check property of each square in the board
-// * Ex. board[row][col].down_cross_check[3] == true indicates that the letter 'D'
-// *     (since 'D' - 'A' == 3) can be placed at board[row][col]
-// *
-// * @param   board   a SquareGrid containing the data for the state of the game
-// *                  This parameter is passed by reference since the board is
-// *                  being modified.
-// */
-//void update_down_cross_checks (SquareGrid &board)
-//{
-//    // Go through all the squares in the board where tiles can be placed
-//    for (int row = 1; row <= NUM_BOARD_ROWS; row++)
-//    {
-//        for (int col = 1; col <= NUM_BOARD_COLS; col++)
-//        {
-//            // Only check squares on which tiles can be placed
-//            if (board[row][col].letter == '.')
-//            {
-//                string above_square, below_square;
-//                int check_row = row - 1;
-//
-//                // Add characters above the cross-check square
-//                while (board[check_row][col].letter != '.' &&
-//                       board[check_row][col].type   != outside)
-//                {
-//                    above_square = (char) toupper(board[check_row][col].letter)
-//                                   + above_square;
-//                    check_row--;
-//                }
-//
-//                check_row = row + 1;
-//
-//                // Add characters below the cross-check square
-//                while (board[check_row][col].letter != '.' &&
-//                       board[check_row][col].type   != outside)
-//                {
-//                    below_square = below_square +
-//                                   (char) toupper(board[check_row][col].letter);
-//                    check_row++;
-//                }
-//
-//                // No need to update if there are blanks squares above and below
-//                if (above_square == "" && below_square == "")
-//                {
-//                    continue;
-//                }
-//
-//                // Go through all 26 of the letters that could possibly
-//                // occupy board[row][col]
-//                for (int test_letter = 'A'; test_letter <= 'Z'; test_letter++)
-//                {
-//                    string test_word = above_square + (char)(test_letter)
-//                                        + below_square;
-//
-//                    // Find in the words unordered map hash table
-//                    // If it is found, then make that letter true (or valid)
-//                    // in the down_cross_check property
-//                    if (global_words.find(test_word) != global_words.end())
-//                    {
-//                        board[row][col].down_cross_check
-//                                            [test_letter-'A'] = true;
-//                    }
-//                    else
-//                    {
-//                        board[row][col].down_cross_check
-//                                            [test_letter-'A'] = false;
-//                    }
-//                }
-//            }
-//        }
-//    }
-//}
-//
+    /**
+     * @return  a SquareGrid containing the data for each square on the board.
+     *          Key for the text file's characters:
+     *              W = Triple Word Score
+     *              w = Double Word Score
+     *              L = Triple Letter Score
+     *              l = Double Letter Score
+     *              . = Regular Square
+     *              * = Square is out of bounds
+     */
+    public SquareGrid read_board_data () {
+
+        // Declare board ArrayList
+        SquareGrid board = new SquareGrid ();
+
+        Scanner boardDataFile = null;
+
+        try {
+            boardDataFile = new Scanner (new FileInputStream (boardFileName));
+        } catch (FileNotFoundException ex) {
+            System.out.println("Could not open " + boardFileName);
+        }
+
+        // Ensure file is open
+        if (boardDataFile != null) {
+
+            // Declare vectors and variables that will become 
+            // properties of the board
+            ArrayList <Boolean> allInvalid = new ArrayList <Boolean> 
+                                              (Collections.nCopies(26, false));
+            ArrayList <Boolean> allValid = new ArrayList <Boolean> 
+                                              (Collections.nCopies(26, true));
+            int row_num = 0;
+
+            // Get all the rows in the board
+            // The rows of x's around the actual board are to ensure that
+            // tiles are not added outside the board
+            while (boardDataFile.hasNextLine()) {
+                // Read a line from the text file
+                String line = boardDataFile.next();
+
+                // Declare a row of Squares to store the data for each row
+                SquareRow row = new SquareRow ();
+
+                // Go through all the characters in each line
+                for (int i = 0; i < line.length(); i++) {
+                    Square sqr = new Square ();
+                    sqr.letter = '.';
+                    sqr.row = row_num;
+                    sqr.col = i;
+
+                    // Assign the Square type to sqr
+                    switch (line.charAt(i)) {
+                        case 'W': sqr.type = SquareType.TRIPLE_WORD;   break;
+                        case 'w': sqr.type = SquareType.DOUBLE_WORD;   break;
+                        case 'L': sqr.type = SquareType.TRIPLE_LETTER; break;
+                        case 'l': sqr.type = SquareType.DOUBLE_LETTER; break;
+                        case '.': sqr.type = SquareType.REGULAR;       break;
+                        case 'x': sqr.type = SquareType.OUTSIDE;       break;
+                    }
+
+                    // Assign the cross_check_letters vector to sqr
+                    switch (line.charAt(i)) {
+                        case 'x':
+                            sqr.downCrossCheck = allInvalid;
+                            sqr.letter = '.';
+                            break;
+                        default:
+                            sqr.downCrossCheck = allValid;
+                            break;
+                    }
+
+                    row.add(sqr);
+                }
+
+                board.add(row);
+                row_num++;  
+            }
+
+        }
+
+        return board;
+    }
+
+    /**
+     * Fills the board with letters which are read from a text file.
+     *
+     * @param   board   a square grid containing the data for the state of the game
+     *                  This parameter is passed by reference since the board is
+     *                  being modified.
+     */
+    public void read_test_game_data (SquareGrid board)
+    {
+        // Open file containing the data
+        Scanner gameDataFile = null;
+        
+        try {
+            gameDataFile = new Scanner (new FileInputStream (gameFileName));
+        } catch (FileNotFoundException ex) {
+            System.out.println("Could not open " + gameFileName);
+        }
+        
+        // Ensure file is open
+        if (gameDataFile != null)
+        {
+            // Go through all the rows
+            for (int rowNum = 0; rowNum < numBoardRows; rowNum++)
+            {
+                // Get each row as input
+                String input = gameDataFile.next();
+
+                // Go through all the rows
+                for (int colNum = 0; colNum < numBoardCols; colNum++)
+                {
+                    // row+1 and row+1 are used since the top row and column
+                    // (row 0 and column 0) of board are used to mark outside squares
+                    // Fill in the tiles on the board                    
+                    board.get(rowNum+1).get(colNum+1).letter = input.charAt(colNum);                    
+                }
+            }
+        }
+
+        
+    }
+
+    /**
+     * Updates the down_cross_check property of each square in the board
+     * Ex. board[row][col].down_cross_check[3] == true indicates that the 
+     *     letter 'D' (since 'D' - 'A' == 3) can be placed at board[row][col]
+     *
+     * @param   board   a SquareGrid containing the data for the state of the game
+     *                  This parameter is passed by reference since the board is
+     *                  being modified.
+     */
+    public void update_down_cross_checks (SquareGrid board)
+    {
+        // Go through all the squares in the board where tiles can be placed
+        for (int row = 1; row <= numBoardRows; row++) {
+            for (int col = 1; col <= numBoardCols; col++) {
+                
+                // Only check squares on which tiles can be placed
+                if (board.get(row).get(col).letter == '.') {
+                    String above_square, below_square;
+                    int check_row = row - 1;
+    
+                    // Add characters above the cross-check square
+                    while (board.get(check_row).get(col).letter != '.' &&
+                           board.get(check_row).get(col).type   != SquareType.OUTSIDE)
+                    {
+                        above_square = (char) board.get(check_row).get(col).letter.toUpperCase()
+                                       + above_square;
+                        check_row--;
+                    }
+    
+                    check_row = row + 1;
+    
+                    // Add characters below the cross-check square
+                    while (board[check_row][col].letter != '.' &&
+                           board[check_row][col].type   != outside)
+                    {
+                        below_square = below_square +
+                                       (char) toupper(board[check_row][col].letter);
+                        check_row++;
+                    }
+    
+                    // No need to update if there are blanks squares above and below
+                    if (above_square == "" && below_square == "")
+                    {
+                        continue;
+                    }
+    
+                    // Go through all 26 of the letters that could possibly
+                    // occupy board[row][col]
+                    for (int test_letter = 'A'; test_letter <= 'Z'; test_letter++)
+                    {
+                        String test_word = above_square + (char)(test_letter)
+                                            + below_square;
+    
+                        // Find in the words unordered map hash table
+                        // If it is found, then make that letter true (or valid)
+                        // in the down_cross_check property
+                        if (global_words.find(test_word) != global_words.end())
+                        {
+                            board[row][col].down_cross_check
+                                                [test_letter-'A'] = true;
+                        }
+                        else
+                        {
+                            board[row][col].down_cross_check
+                                                [test_letter-'A'] = false;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
 ///**
 // * Updates the min_across_word_length property of every square on the board.
 // * This property stores the minimum length of the word going across starting from
@@ -507,7 +486,7 @@ public final class ScrabbleProgram {
 //void update_min_across_word_length (SquareGrid &board)
 //{
 //    // Go through all the rows
-//    for (int row = 1; row <= NUM_BOARD_ROWS; row++)
+//    for (int row = 1; row <= numBoardRows; row++)
 //    {
 //        // Set the minimum word length as -1 to signify
 //        // squares rightward of any adjacent square
@@ -516,7 +495,7 @@ public final class ScrabbleProgram {
 //        int min_word_length = -1;
 //
 //        // Go through all the squares in the row from right to left
-//        for (int col = NUM_BOARD_COLS; col >= 1; col--)
+//        for (int col = numBoardCols; col >= 1; col--)
 //        {
 //            // If the square to its immediate left is occupied with a letter,
 //            // then the square at board[row][col] cannot be the left-most square
@@ -560,17 +539,17 @@ public final class ScrabbleProgram {
 // * Returns a vector of integers which represents the letters on a Scrabble rack.
 // * These letters are available to be placed on the board.
 // *
-// * @param   letters     a string of all the letters in the rack
+// * @param   letters     a String of all the letters in the rack
 // * @return              a vector of 26 integers where each element represents
 // *                      the number of tiles of that letter.
 // *                      Ex. rack[4] == 2 indicates 2 E's are in the rack
 // */
-//vector <int> fill_rack (string letters)
+//vector <int> fill_rack (String letters)
 //{
 //    vector <int> rack (27, 0);
 //
 //    // Set the number of characters to read as
-//    // the min of NUM_RACK_TILES and the length of the string "letters"
+//    // the min of NUM_RACK_TILES and the length of the String "letters"
 //    int num_chars_read = (NUM_RACK_TILES > letters.length()) ?
 //                         (letters.length()) : (NUM_RACK_TILES);
 //
@@ -609,9 +588,9 @@ public final class ScrabbleProgram {
 //    // Go through all the squares to check for any squares that have tiles
 //    // It will find the best move and exit the function
 //    // as soon as it finds a tile
-//    for (int row = 1; row <= NUM_BOARD_ROWS; row++)
+//    for (int row = 1; row <= numBoardRows; row++)
 //    {
-//        for (int col = 1; col <= NUM_BOARD_COLS; col++)
+//        for (int col = 1; col <= numBoardCols; col++)
 //        {
 //            // Check to see if the square has a tile
 //            // Only find the best move if a square on the board has a tile
@@ -654,8 +633,8 @@ public final class ScrabbleProgram {
 //    //
 //
 //    // Find the middle row and column since these determine the
-//    int mid_row = NUM_BOARD_ROWS/2 + 1;
-//    int mid_col = NUM_BOARD_COLS/2 + 1;
+//    int mid_row = numBoardRows/2 + 1;
+//    int mid_col = numBoardCols/2 + 1;
 //
 //    // Go through all the squares left of and including the center square
 //    for (int col = 1; col <= mid_col; col++)
@@ -707,9 +686,9 @@ public final class ScrabbleProgram {
 //    int best_pts = 0;
 //
 //    // Go through all the squares in the board
-//    for (int row = 1; row <= NUM_BOARD_ROWS; row++)
+//    for (int row = 1; row <= numBoardRows; row++)
 //    {
-//        for (int col = 1; col <= NUM_BOARD_COLS; col++)
+//        for (int col = 1; col <= numBoardCols; col++)
 //        {
 //            // Declare variables necessary to call the function extend_right()
 //            vector <Square> curr_move;
@@ -1158,9 +1137,9 @@ public final class ScrabbleProgram {
 //    SquareGrid inverted_board = board;
 //
 //    // Fill through all the squares in the inverted board
-//    for (int row = 1; row <= NUM_BOARD_ROWS; row++)
+//    for (int row = 1; row <= numBoardRows; row++)
 //    {
-//        for (int col = 1; col <= NUM_BOARD_COLS; col++)
+//        for (int col = 1; col <= numBoardCols; col++)
 //        {
 //            inverted_board[row][col] = board[col][row];
 //            inverted_board[row][col].row = row;
@@ -1227,14 +1206,14 @@ public final class ScrabbleProgram {
 //void output_board (SquareGrid board)
 //{
 //    // String storing the row header that is displayed vertically
-//    string row_num_header = "    ROW NUMBER        ";
+//    String row_num_header = "    ROW NUMBER        ";
 //
 //    // Column header
 //    cout << "            COLUMN NUMBER         " << endl;
 //    cout << "       2   4   6   8  10  12  14    " << endl;
 //
 //    // Go through all rows of the scrabble board (usually 15)
-//    for (int row = 1; row <= NUM_BOARD_ROWS; row++)
+//    for (int row = 1; row <= numBoardRows; row++)
 //    {
 //        // Output a letter if necessary of the row header
 //        cout << row_num_header[row] << " ";
@@ -1256,7 +1235,7 @@ public final class ScrabbleProgram {
 //        }
 //
 //        // Output every letter on the board (period or . means an empty square)
-//        for (int col = 1; col <= NUM_BOARD_COLS; col++)
+//        for (int col = 1; col <= numBoardCols; col++)
 //        {
 //            cout << board[row][col].letter << " ";
 //        }
@@ -1276,7 +1255,7 @@ public final class ScrabbleProgram {
 //    // Get the data for the board
 //    SquareGrid board = read_board_data();
 //    read_test_game_data(board);
-//    string rack_str = "ENTIREE";
+//    String rack_str = "ENTIREE";
 //    vector <int> rack = fill_rack(rack_str);
 //
 //    // Loop infinitely until the user decides to exit
@@ -1330,7 +1309,7 @@ public final class ScrabbleProgram {
 //            bool invalid_tile = false;
 //
 //            // Give the user options
-//            string input;
+//            String input;
 //            cout << endl;
 //            cout << "Enter 't' to change a tile on the board." << endl;
 //            cout << "Enter 'r' to change the tiles in the rack." << endl;
@@ -1353,8 +1332,8 @@ public final class ScrabbleProgram {
 //                // Ensure the letter is uppercase and the row and col are
 //                // the right size
 //                if ( (isalpha(letter) || letter == '.')
-//                      && 1 <= row && row <= NUM_BOARD_ROWS
-//                      && 1 <= col && col <= NUM_BOARD_COLS)
+//                      && 1 <= row && row <= numBoardRows
+//                      && 1 <= col && col <= numBoardCols)
 //                {
 //                    board[row][col].letter = letter;
 //                }
@@ -1404,7 +1383,6 @@ public final class ScrabbleProgram {
      */
     public static void main(String[] args) {
         ScrabbleProgram game = new ScrabbleProgram ();
-        game.printWordTrie(game.trieRoot);
     }  
     
 }
