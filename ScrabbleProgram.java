@@ -22,16 +22,15 @@ package scrabbl_ai;
 
 import java.io.*;
 import java.util.Scanner; 
+import java.util.regex.*;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  *
  * @author Owner
  */
-public class ScrabbleProgram {
+public final class ScrabbleProgram {
 
     public enum SquareType {
         TRIPLE_WORD, 
@@ -45,12 +44,12 @@ public class ScrabbleProgram {
     public class Square {
     
         SquareType type;
-        ArrayList<Boolean> down_cross_check;
+        ArrayList<Boolean> downCrossCheck;
         char letter; // Special values: '.' = empty square and
                      //                 lowercase letter = blank tile
         int row;
         int col;
-        int min_across_word_length;
+        int minAcrossWordLength;
     }
 
     public class Tile {
@@ -58,40 +57,26 @@ public class ScrabbleProgram {
         int points;
         int total;
     }
-    
-    public class TrieNodeRoot extends TrieNode {
-        int special;
-        
-        void initialize (int x) {
-            if (is_terminal_node)
-            {
-                special = x;
-            }
-        }
-    }
 
     public class TrieNode {
         char letter; // Special value: "*" if root node
-        boolean is_terminal_node;
+        boolean isTerminalNode;
 
         ArrayList <TrieNode> children;
 
         // Stores the index of each letter of each children node
         // Ex. If a child has a letter 'C' at children [1],
-        //     then letters_present['C'-'A'] == letters_present[2] == 1
-        ArrayList <Integer> letter_indexes;
+        //     then letterIndexes['C'-'A'] == letterIndexes[2] == 1
+        ArrayList <Integer> letterIndexes;
         
-        TrieNode () {
-            children = new ArrayList();
+        public TrieNode () {
+            children = new ArrayList<TrieNode>();
+            letterIndexes = new ArrayList<Integer>();
             
             for (int i = 0; i < 26; i++) {
-                letter_indexes.add(-1);
+                letterIndexes.add(-1);
             }
         }
-    }
-    
-    public char get_letter (TrieNode node) {
-        return node.letter;
     }
 
     // Define classes to have typedef equivalent in C++
@@ -99,43 +84,57 @@ public class ScrabbleProgram {
     public class SquareGrid extends ArrayList <SquareRow> {}
     public class Lexicon extends HashMap <String, Integer> {}
     
-    // Define global variables
-    String TILES_FILE_NAME = "tiles.txt";
-    String WORDS_FILE_NAME = "jonbcard_github_words.txt";
-    String BOARD_FILE_NAME = "board.txt";
-    String TESTGAME_FILE_NAME = "test_game_across.txt";
-    int NUM_BOARD_ROWS = 15;
-    int NUM_BOARD_COLS = 15;
-    int NUM_RACK_TILES = 7;
+    // Define properties of the ScrabbleProgram class
+    Lexicon words;
+    TrieNode trieRoot;
+    ArrayList <Tile> tiles;
+    final String tilesFileName;
+    final String wordsFileName;
+    final String boardFileName;
+    final String gameFileName;
+    final int numBoardRows;
+    final int numBoardCols;
+    final int numRackTiles;
+    
+    // Constructor function for the main class
+    public ScrabbleProgram () {
+        
+        // Get the data for the tiles and words to be stored in global variables
 
-    // Get the data for the tiles and words to be stored in global variables
-    Lexicon global_words = read_word_data();
-    TrieNode global_trie_root = create_word_trie();
-    ArrayList <Tile> global_tiles = read_tile_data();
+        tilesFileName = "tiles.txt";
+        wordsFileName = "common_1000_words.txt";
+        boardFileName = "board.txt";
+        gameFileName = "test_game_across.txt";
+        numBoardRows = 15;
+        numBoardCols = 15;
+        numRackTiles = 7;
+        
+        words = readWordData();
+        trieRoot = createWordTrie();
+        tiles = readTileData();
+    }
+   
 
     /**
-     *
-     * @return
+     * @return  an unordered map of strings containing all the words in the 
+     *          scrabble dictionary. The key is type string since it is stores 
+     *          the word. The mapped value is type integer since it stores if 
+     *          the word is worth a bonus multiplier.
      */
-    public Lexicon read_word_data () {
+    public Lexicon readWordData () {
         // Declare vector to store all of the words in the scrabble dictionary
-        Lexicon words = new Lexicon ();
-
+        words = new Lexicon ();
        
         // Open file containing the word data
         Scanner word_data_file = null;
-        
+        System.out.print(wordsFileName);
+
         // Try opening the file
         try {
-            word_data_file = new Scanner 
-                                        (new FileInputStream(WORDS_FILE_NAME));
-            
+            word_data_file = new Scanner(new File(wordsFileName));
         } catch (FileNotFoundException ex) {
-            System.out.println("Could not open " + WORDS_FILE_NAME);
-            Logger.getLogger(ScrabbleProgram.class.getName()).
-                                                   log(Level.SEVERE, null, ex);
+            System.out.println("Could not open " + wordsFileName);
         }
-        
         
         // If file is opened
         if (word_data_file != null) {  
@@ -151,127 +150,130 @@ public class ScrabbleProgram {
         return words;
     }
 
-///**
-// * @param   words   an unordered map of words retrieved from a text file
-// * @return          a pointer to a TrieNode that is the root of the trie
-// */
-//TrieNode create_word_trie ()
-//{
-//    TrieNode* root = new TrieNode;
-//    root->letter = '*';
-//    root->is_terminal_node = false;
-//
-//    for (auto itr = global_words.begin(); itr != global_words.end(); itr++)
-//    {
-//        string str = itr->first;
-//        insert_into_trie(root, str);
-//    }
-//
-//    return root;
-//}
-//
-///**
-// * Inserts TrieNodes into the trie to store the word in the data structure.
-// *
-// * @param   root    a pointer a TrieNode that is the root of the trie
-// * @param   words   the string of letters to be inserted
-// */
-//void insert_into_trie (TrieNode* root, string word)
-//{
-//    TrieNode* curr_node = root;
-//
-//    // Go through each letter in the word -> each letter is word[i]
-//    for (unsigned int i = 0; i < word.length(); i++)
-//    {
-//        // Calculate the index for the letter_indexes property
-//        // for the letter in the word
-//        // letter_index allows the program to determine whether a
-//        // child has the letter word[i] in O(1) time
-//        int letter_index = word[i] - 'A';
-//
-//        // Check to see if there are no children with the letter in the word
-//        if (curr_node->letter_indexes[letter_index] == -1)
-//        {
-//            // Create a new node
-//            TrieNode* new_node = new TrieNode;
-//            new_node->letter = word[i];
-//            new_node->is_terminal_node = false;
-//
-//            // Update the current node by adding new_node as a child
-//            curr_node->children.push_back(new_node);
-//
-//            // Also, update the letter_indexes property by storing
-//            // the index of the child where the letter word[i] can be found
-//            // It is the index of the last child in the children property
-//            // since the node was just added
-//            curr_node->letter_indexes[letter_index] =
-//                                            curr_node->children.size() - 1;
-//        }
-//
-//        // Go to the child of curr_node that contains the letter in the word
-//        int child_index = curr_node->letter_indexes[letter_index];
-//        curr_node = curr_node->children[child_index];
-//    }
-//
-//    curr_node->is_terminal_node = true;
-//}
-//
-///**
-// * Prints a word trie to the console. Uses recursive calls to go down the trie.
-// *
-// * @param   node    a TrieNode pointer of a node containing the data for a node
-// */
-//void print_word_trie (TrieNode* node)
-//{
-//    // Output the node's letter property
-//    cout << node->letter << endl;
-//
-//    // Go through all the node's children's letters
-//    for (unsigned int i = 0; i < node->children.size(); i++)
-//    {
-//        cout << node->children[i]->letter << " ";
-//    }
-//
-//    cout << endl << endl;
-//
-//    // Print each child of the node
-//    for (unsigned int i = 0; i < node->children.size(); i++)
-//    {
-//        print_word_trie(node->children[i]);
-//    }
-//}
-//
-///**
-// * @return  a vector of Tiles with each tile object containing the right data.
-// */
-//vector <Tile> read_tile_data ()
-//{
-//    // Declare vector to store all the Tiles
-//    vector <Tile> tiles;
-//
-//    // Open file containing the letter data
-//    ifstream letter_data_file;
-//    string file_name = TILES_FILE_NAME;
-//    letter_data_file.open(file_name.c_str(), ifstream::in);
-//
-//    // Ensure data file is open
-//    if (!letter_data_file.is_open())
-//    {
-//        cout << "Could not open " << file_name << endl;
-//        return tiles;
-//    }
-//
-//    // Loop through all 27 possible tiles and add them to the vector
-//    for (int i = 0; i < 27; i++)
-//    {
-//        Tile tile;
-//        letter_data_file >> tile.letter >> tile.points >> tile.total;
-//        tiles.push_back(tile);
-//    }
-//
-//    return tiles;
-//}
-//
+    /**
+     * @return  a TrieNode that is the root of the trie
+     */
+    public TrieNode createWordTrie () {
+        TrieNode root = new TrieNode ();
+        root.letter = '*';
+        root.isTerminalNode = false;
+
+        for (String word : words.keySet()) {
+            
+            if (word.length() > 2 && word.matches("[A-Z]+")) {
+                insertIntoTrie(root, word);
+            }
+        }
+
+        return root;
+    }
+
+    /**
+     * Inserts TrieNodes into the trie to store the word in the data structure.
+     *
+     * @param   root    a TrieNode that is the root of the trie
+     * @param   word   the string of letters to be inserted
+     */
+    public void insertIntoTrie (TrieNode root, String word) {
+        
+        TrieNode curr_node = root;
+
+        // Go through each letter in the word -> each letter is word[i]
+        for (int i = 0; i < word.length(); i++) {
+            // Calculate the index for the letter_indexes property
+            // for the letter in the word
+            // letter_index allows the program to determine whether a
+            // child has the letter word[i] in O(1) time
+            int letter_index = word.charAt(i) - 'A';
+
+            // Check to see if there are no children with the letter in the word
+            if (curr_node.letterIndexes.get(letter_index) == -1) {
+                
+                // Create a new node
+                TrieNode new_node = new TrieNode();
+                new_node.letter = word.charAt(i);
+                new_node.isTerminalNode = false;
+
+                // Update the current node by adding new_node as a child
+                curr_node.children.add(new_node);
+
+                // Also, update the letter_indexes property by storing
+                // the index of the child where the letter word[i] can be found
+                // It is the index of the last child in the children property
+                // since the node was just added
+                curr_node.letterIndexes.set(letter_index, 
+                                             curr_node.children.size() - 1);
+            }
+
+            // Go to the child of curr_node that contains the letter in the word
+            int child_index = curr_node.letterIndexes.get(letter_index);
+            curr_node = curr_node.children.get(child_index);
+        }
+
+        curr_node.isTerminalNode = true;
+    }
+
+    /**
+     * Prints a word trie to the console. 
+     * Uses recursive calls to go down the trie.
+     *
+     * @param   node    a TrieNode containing the data for a node
+     */
+    public void printWordTrie (TrieNode node) {
+        
+        // Output the node's letter property
+        System.out.println(node.letter);
+
+        // Go through all the node's children's letters
+        for (TrieNode child : node.children) {
+            System.out.print(String.valueOf(child.letter) + " ");
+        }
+
+        System.out.println();
+        System.out.println();
+
+        // Print each child of the node
+        for (TrieNode child : node.children)
+        {
+            printWordTrie(child);
+        }
+    }
+
+    /**
+     * @return  a vector of Tiles with each tile object containing the right data.
+     */
+    ArrayList <Tile> readTileData () {
+        
+        // Declare vector to store all the Tiles
+        tiles = new ArrayList <Tile> ();
+   
+        // Open file containing the tile data
+        Scanner tileDataFile = null;
+        
+        // Try opening the file
+        try {
+            tileDataFile = new Scanner (new FileInputStream(tilesFileName));
+        } catch (FileNotFoundException ex) {
+            System.out.println("Could not open " + tilesFileName);
+        }
+    
+        // Ensure data file is open
+        if (tileDataFile != null)
+        {            
+            // Loop through all 27 possible tiles and add them to the vector
+            for (int i = 0; i < 27; i++)
+            {
+                Tile tile = new Tile();
+                tile.letter = tileDataFile.next().charAt(0);
+                tile.points = Integer.parseInt(tileDataFile.next());
+                tile.total = Integer.parseInt(tileDataFile.next());
+                tiles.add(tile);
+            }
+        }
+    
+        return tiles;
+    }
+    
 ///**
 // * @return  a SquareGrid containing the data for each square on the board.
 // *          Key for the text file's characters:
@@ -1401,9 +1403,8 @@ public class ScrabbleProgram {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        // TODO code application logic here
-        
-        
-    }
+        ScrabbleProgram game = new ScrabbleProgram ();
+        game.printWordTrie(game.trieRoot);
+    }  
     
 }
