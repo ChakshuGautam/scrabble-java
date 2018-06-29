@@ -17,8 +17,8 @@
  *
  * Contact Email: leiw9425@gmail.com
  */
-
-package scrabbl_ai;
+  
+package scrabblAi;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -46,7 +46,7 @@ public final class ScrabbleProgram {
     public class Square {
         
         SquareType type;
-        Boolean[] downCrossCheck;
+        boolean[] downCrossCheck;
         char letter; // Special values: '.' = empty square and
                      //                 lowercase letter = blank tile
         int row;
@@ -107,7 +107,7 @@ public final class ScrabbleProgram {
     public ScrabbleProgram () {
     
         tilesFileName = "tiles.txt";
-        wordsFileName = "words_five.txt";
+        wordsFileName = "common_1000_words.txt";
         boardFileName = "board.txt";
         gameFileName = "test_game_across.txt";
         numBoardRows = 15;
@@ -335,12 +335,12 @@ public final class ScrabbleProgram {
                     // Assign the downCrossCheck vector to sqr
                     switch (line.charAt(i)) {
                         case 'x':
-                            sqr.downCrossCheck = new Boolean[26];
+                            sqr.downCrossCheck = new boolean[26];
                             Arrays.fill(sqr.downCrossCheck, false);
                             sqr.letter = '.';
                             break;
                         default:
-                            sqr.downCrossCheck = new Boolean[26];
+                            sqr.downCrossCheck = new boolean[26];
                             Arrays.fill(sqr.downCrossCheck, true);
                             sqr.letter = '.';
                             break;
@@ -695,83 +695,76 @@ public final class ScrabbleProgram {
     /**
      * Finds the best move by extending rightwards from a given square
      *
-     * @param   board               Array storing the state of the board
-     * @param   rack                an Array of integers storing the number of 
-     *                              each type of tile
-     * @param   node                the node in the trie storing the last  
-     *                              letter added to the word being built and
-     *                              the next possible letters
-     * @param   currSquare          the square on which a new tile may be 
-     *                              placed for the current move
-     * @param   minWordLength       the minimum word length of the word to be 
-     *                              created so that it connects with 
-     *                              pre-existing words
-     * @param   currMove            the Squares on which tiles have been placed 
-     *                              of the current move that is being attempted
-     * @param   bestMove            the best possible move thus far represented 
-     *                              by a Array of squares
+     * @param   board           Array storing the state of the board
+     * @param   rack            an Array of integers storing the number of 
+     *                          each type of tile
+     * @param   node            the node in the trie storing the last  
+     *                          letter added to the word being built and 
+     *                          the next possible letters
+     * @param   currSquare      the square on which a new tile may be placed
+     *                          for the current move
+     * @param   minWordLength   the minimum word length of the word to be 
+     *                          created so that it connects with 
+     *                          pre-existing words
+     * @param   currMove        the Squares on which tiles have been placed 
+     *                          of the current move that is being attempted
+     * @param   bestMove        the best possible move thus far represented 
+     *                          by a Array of squares
+     * @param   partWord        the left part of the word being built. 
+     *                          Parameter only used in debugging.
      */
-    public void extendRight (Square[][] board, int[] rack, TrieNode node,
-                             Square currSquare, int minWordLength,
-                             ScrabbleMove currMove, ScrabbleMove bestMove, String part) {
+     public void extendRight (Square[][] board, int[] rack, TrieNode node,
+                       Square currSquare, int minWordLength,
+                       ScrabbleMove currMove, ScrabbleMove bestMove, 
+                       String partWord) {
         
         Square sqr = board[currSquare.row][currSquare.col];
-//System.out.println(part);
-
-    if ("T".equals(part)){
-        System.out.println("code2 " + sqr.col);
-    }
-
+        //System.out.println(partWord);
+            
         // If the square is empty then simply do nothing
         if (sqr.type == SquareType.OUTSIDE) {
         }
         // If the current square is empty
-        else if (sqr.letter == '.') {
+        else if (sqr.letter == '.')
+        {
+            // Determine if a legal move has been found ie. a word is created and
+            // the word is long enough so that it can connect with pre-existing tiles
+            if (node.isTerminalNode == true &&
+                currMove.size() >= minWordLength) {
+                
+                calcAcrossPts(board, currMove);
 
-//            // Determine if a legal move has been found ie. a word is created and
-//            // the word is long enough so that it can connect with pre-existing tiles
-//            if (node.isTerminalNode == true &&
-//                currMove.size() >= minWordLength) {
-//                
-//                calcAcrossPts(board, currMove);
-//
-//                if (currMove.points > bestMove.points) {
-//                    bestMove.clear();
-//                    bestMove.addAll(currMove);
-//                    bestMove.points = currMove.points;
-//                }
-//            }
+                if (currMove.points > bestMove.points) {
+                    bestMove.clear();
+                    bestMove.addAll(currMove);
+                    bestMove.points = currMove.points;
+                }
+            }
             
             // Go through all the children of the node
-            for (TrieNode nodeChild : node.children) {
+            for (int i = 0; i < node.children.size(); i++) {
                 
-                char childLetter = nodeChild.letter ;
+                char childLetter = node.children.get(i).letter ;
                 int childLetterIndex = childLetter - 'A';
 
                 // Check to see if the letter of the child is in our rack AND
                 // it is in the downCrossCheck set of the square
-                if (rack[childLetterIndex] > 0){ //&&
-                    //sqr.downCrossCheck[childLetterIndex]) {
-
+                if (rack[childLetterIndex] > 0 &&
+                    sqr.downCrossCheck[childLetterIndex]) {
+                    
                     // Remove the tile from the rack
                     rack[childLetterIndex]--;
-                    
-                    if (currMove.size() == 0 && sqr.col > 1) {
-                        System.out.println("a");
-                    }
+
                     // Add the square onto the current move
                     addSqrToMove(sqr.row, sqr.col, childLetter, currMove);
 
-System.out.println("Before " + currSquare.col);
-
-                    
                     // Move rightwards to the next square
                     currSquare = board[sqr.row][sqr.col+1];
-            System.out.println("After " + currSquare.col);
 
                     // Recursively call itself to continued extending right
-                    extendRight(board, rack, nodeChild, currSquare,
-                                 minWordLength, currMove, bestMove, part+childLetter);
+                    extendRight(board, rack, node.children.get(i), currSquare,
+                                 minWordLength, currMove, bestMove, 
+                                 partWord+childLetter);
 
                     // Remove the square from the current move
                     currMove.remove(currMove.size() - 1);
@@ -779,48 +772,48 @@ System.out.println("Before " + currSquare.col);
                     // Place tile back in the rack
                     rack[childLetterIndex]++;
                 }
-//                // Otherwise try using a blank tile
-//                else if (rack[26] > 0 
-//                         && sqr.downCrossCheck[childLetterIndex]) {
-//                    // Remove the tile from the rack
-//                    rack[26]--;
-//                    
-//                    // Add the square onto the current move
-//                    addSqrToMove(sqr.row, sqr.col, 
-//                                 Character.toLowerCase(childLetter), 
-//                                 currMove);
-//
-//                    // Move rightwards to the next square
-//                    currSquare = board[sqr.row][sqr.col+1];
-//
-//                    // Recursively call itself to continued extending right
-//                    extendRight(board, rack, nodeChild, currSquare,
-//                                 minWordLength, currMove, bestMove, part+childLetter);
-//
-//                    // Remove the square from the current move
-//                    currMove.remove(currMove.size() - 1);
-//
-//                    // Place tile back in the rack
-//                    rack[26]++;
-//                }
+                // Otherwise try using a blank tile
+                else if (rack[26] > 0 && sqr.downCrossCheck[childLetterIndex]) {
+                    // Remove the tile from the rack
+                    rack[26]--;
+
+                    // Add the square onto the current move
+                    addSqrToMove(sqr.row, sqr.col, 
+                                    Character.toLowerCase(childLetter), 
+                                 currMove);
+
+                    // Move rightwards to the next square
+                    currSquare = board[sqr.row][sqr.col+1];
+
+                    // Recursively call itself to continued extending right
+                    extendRight(board, rack, node.children.get(i), currSquare,
+                                 minWordLength, currMove, bestMove, 
+                                 partWord + childLetter);
+
+                    // Remove the square from the current move
+                    currMove.remove(currMove.size() - 1);
+
+                    // Place tile back in the rack
+                    rack[26]++;
+                }
             }
         }
         // The square contains a letter
         else {
+            int sqrLetterIndex = Character.toUpperCase(sqr.letter) - 'A';
+            int childIndex = node.letterIndexes[sqrLetterIndex];
 
-//            int sqrLetterIndex = Character.toUpperCase(sqr.letter) - 'A';
-//            int childIndex = node.letterIndexes[sqrLetterIndex];
-//
-//            // Check to see if node has a child with the letter 
-//            // occupying the square
-//            if (childIndex != -1) {
-//                // Move rightwards to the next square
-//                currSquare = board[currSquare.row][currSquare.col+1];
-//
-//                // Recursively call itself to continued extending right
-//                extendRight(board, rack, node.children.get(childIndex), 
-//                            currSquare, minWordLength, currMove, bestMove, part+sqr.letter);
-//            }
+            // Check to see if node has a child with the letter occupying the square
+            if (childIndex != -1)
+            {
+                // Move rightwards to the next square
+                currSquare = board[currSquare.row][currSquare.col+1];
+
+                // Recursively call itself to continued extending right
+                extendRight(board, rack, node.children.get(childIndex), 
+                            currSquare, minWordLength, currMove, bestMove, 
+                            partWord+ sqr.letter);
+            }
         }
     }
 
@@ -1084,9 +1077,13 @@ System.out.println("Before " + currSquare.col);
         // Fill through all the squares in the inverted board
         for (int row = 0; row <= numBoardRows + 1; row++) {
             for (int col = 0; col <= numBoardCols + 1; col++) {
-                invertedBoard[row][col] = board[col][row];
+                invertedBoard[row][col] = new Square();
+                invertedBoard[row][col].type = board[col][row].type;
+                invertedBoard[row][col].letter = board[col][row].letter;
                 invertedBoard[row][col].row = row;
                 invertedBoard[row][col].col = col;
+                invertedBoard[row][col].downCrossCheck = new boolean[26];
+                invertedBoard[row][col].minAcrossWordLength = 0;
             }
         }
 
@@ -1245,7 +1242,6 @@ System.out.println("Before " + currSquare.col);
 
             // Output what the best move would look like
             Square[][] newBoard = createBoardCopy(board);
-            //System.arraycopy(board, 0, newBoard, 0, board.length);
             addMoveToBoard(newBoard, bestMove);
             outputBoard(newBoard);
 
@@ -1256,7 +1252,7 @@ System.out.println("Before " + currSquare.col);
                 // Give the user options
                 String input;
                 System.out.println();
-                System.out.println("Enter 't' to change a tile on the board.");
+                System.out.println("Enter 'b' to change a tile on the board.");
                 System.out.println("Enter 'r' to change the tiles "
                                                             + "in the rack.");
                 System.out.println("Enter 'f' to find the best move.");
@@ -1264,7 +1260,7 @@ System.out.println("Before " + currSquare.col);
                 input = reader.next();
 
                 // If the user decides to add a tile to the board
-                if (input.equals("t") || input.equals("T")) {
+                if (input.equals("b") || input.equals("B")) {
                     char letter;
                     int row, col;
 
@@ -1327,35 +1323,7 @@ System.out.println("Before " + currSquare.col);
      */
     public static void main(String[] args) {
         ScrabbleProgram game = new ScrabbleProgram ();
-        //game.printWordTrie(game.trieRoot);
-        Square[][] board = game.readBoardData();        
-        game.readTestGameData(board);
-        game.outputBoard(board);
-        String rackStr = "THEREIRBAGSIL";
-        int[] rack = game.fillRack(rackStr);
-        ScrabbleMove currMove = new ScrabbleMove();
-        ScrabbleMove bestMove = game.findBestMove(board, rack);
-        game.extendRight(board, rack, game.trieRoot, board[8][1], 0, currMove, bestMove, "");
-        
-        System.out.println (bestMove.size() + " last");
-                   // Output the best move
-            System.out.println();
-            System.out.println("BEST MOVE");
-            System.out.println("Points: " + bestMove.points);
-
-            // Only output the specifics of the move if it exists
-            if (bestMove.size() > 0) {
-                System.out.println("Tiles: ");
-                System.out.println("Start Row: " + bestMove.get(0).row);
-                System.out.println("Start Col: " + bestMove.get(0).col);
-
-                for (int i = 0; i < bestMove.size(); i++) {
-                    System.out.println(bestMove.get(i).letter 
-                                     + " " + bestMove.get(i).row 
-                                     + " " + bestMove.get(i).col);
-                }
-            }
-         //        game.runScrabble();
+        game.runScrabble();
     } 
 
     
