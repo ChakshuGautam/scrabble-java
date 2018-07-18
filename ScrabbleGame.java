@@ -108,7 +108,7 @@ public final class ScrabbleGame {
         // Add every word in the words HashMap
         for (String word : words.keySet()) {
             
-            if (word.length() > 2 && word.matches("[A-Z]+")) {
+            if (word.length() >= 2 && word.matches("[A-Z]+")) {
                 insertIntoTrie(root, word);
             }
         }
