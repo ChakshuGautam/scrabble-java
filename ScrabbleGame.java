@@ -1048,7 +1048,7 @@ public final class ScrabbleGame {
     public void addMoveToBoard (Square[][] board, ScrabbleMove move) {
         
         for (int i = 0; i < move.size(); i++) {
-            board[move.get(i).row][move.get(i).col] = move.get(i);
+            board[move.get(i).row][move.get(i).col].letter = move.get(i).letter;
         }
 
         updateDownCrossChecks(board);
